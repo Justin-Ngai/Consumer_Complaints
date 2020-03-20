@@ -8,7 +8,7 @@ The challenge is to:
 3. order by product & year
 4. write the statistics to an output file
 
-The repository folders include:
+The repository layout include:
 - run.sh, a script that runs the src file that does the above actions
 - input folder, holds customer complaints CSV file
 - output folder, hold statistics on customer complaints CSV file
