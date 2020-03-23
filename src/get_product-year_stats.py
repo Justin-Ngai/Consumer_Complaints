@@ -1,5 +1,5 @@
 '''
-[Title]
+[Header]
 
 Get Product-Year-Aggregates for Customer Complaints
 
@@ -19,49 +19,55 @@ Within each code block are comments to help the reader understand techniques use
 
 import sys, csv, decimal
 
-# Code block to read the CSV input into a dictionary for aggregating actions
+# Code block to read the CSV input into a dictionary, for aggregating actions.
 
 with open(sys.argv[1]) as file: # Opens input file
     reader = csv.reader(file)
     next(reader) # Skips header
     
-    d = {}
+    product_years = {} # Dictionary with product-year keys, & values being the companies with a number of complaints for these product-year's.
     for row in reader:
-        key = (row[1].lower(), row[0][:4]) # Each key is product-year pair
+
+        if not row[0][:4].isnumeric(): # Graceful handling of date with wrong format
+            raise TypeError('''
+One or more rows has 'Date Received' that doesn't start with 4 digits for YYYY.
+Please ensure that all rows have 'Date Received' starting with 4 digits for YYYY.
+''')
+        product_year = (row[1].lower(), row[0][:4])            # Each key is a product-year pair
         company = row[7]
-        if key not in d:
-            d[key] = {company.lower(): 1} # Each value is a dictionary of companies with this complaint, & how many complaints they got
+        if product_year not in product_years:
+            product_years[product_year] = {company.lower(): 1} # Each value is a dictionary of companies with this complaint, & how many complaints they got
         else:
-            if company.lower() not in d[key]:
-                d[key][company.lower()] = 1
+            if company.lower() not in product_years[product_year]:
+                product_years[product_year][company.lower()] = 1
             else:
-                d[key][company.lower()] += 1
+                product_years[product_year][company.lower()] += 1
 
-# Code block for aggregate actions
+# Code block for aggregating actions
 
-for key in d:                          # For this product-year:
+for product_year in product_years:                          # For this product-year:
     stats = [0, 0, 0]
-    for company in d[key]:
-        stats[0] += d[key][company]    # - Number of complaints
-        stats[1] += 1                  # - Number of companies complained at
-        if stats[2] < d[key][company]: # - Highest number of complaints for one company
-            stats[2] = d[key][company]
+    for company in product_years[product_year]:
+        stats[0] += product_years[product_year][company]    # - Number of complaints
+        stats[1] += 1                                       # - Number of companies complained at
+        if stats[2] < product_years[product_year][company]: # - Highest number of complaints for one company
+            stats[2] = product_years[product_year][company]
 
-    # This is to get the highest percentage of complaints for one company.
-    # It's using functions to precisely round based on the values Python is able to hold.
+    # The below functions get the highest percentage of complaints (for this product-year) for one company.
+    # The functions precisely round based on how precise a value Python can store.
     stats[2] = decimal.Decimal(stats[2]/stats[0] * 100).quantize(decimal.Decimal('1'),
                                                                  rounding=decimal.ROUND_HALF_UP)
-    d[key] = stats
+    product_years[product_year] = stats
 
 # Code block to sort, then write to an output file
 
-l = d.items()
-l = sorted(l, key = lambda x: int(x[0][1])) # Sort by year
-l = sorted(l, key = lambda x: x[0][0]) # Sort by product
+prod_year_list = product_years.items()
+prod_year_list = sorted(prod_year_list, key = lambda x: int(x[0][1])) # Sort by year
+prod_year_list = sorted(prod_year_list, key = lambda x: x[0][0]) # Sort by product
 
 with open(sys.argv[2], mode='w') as file: # Opens output file
     writer = csv.writer(file)
-    for row in l:                    # For this row, these fields are the:
+    for row in prod_year_list:       # For this row, the fields written are:
         writer.writerow([row[0][0],  # - Product
                          row[0][1],  # - Year
                          row[1][0],  # - Number of complaints
